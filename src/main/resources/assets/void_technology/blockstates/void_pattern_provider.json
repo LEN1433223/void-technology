@@ -1,0 +1,25 @@
+{
+  "variants": {
+    "push_direction=all": {
+      "model": "void_technology:block/void_pattern_provider"
+    },
+    "push_direction=up": {
+      "model": "void_technology:block/void_pattern_provider"
+    },
+    "push_direction=down": {
+      "model": "void_technology:block/void_pattern_provider"
+    },
+    "push_direction=north": {
+      "model": "void_technology:block/void_pattern_provider"
+    },
+    "push_direction=south": {
+      "model": "void_technology:block/void_pattern_provider"
+    },
+    "push_direction=east": {
+      "model": "void_technology:block/void_pattern_provider"
+    },
+    "push_direction=west": {
+      "model": "void_technology:block/void_pattern_provider"
+    }
+  }
+}

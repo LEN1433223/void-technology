@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>虚空科技 · 模组图标</title>
+<style>html,body{margin:0;padding:0;background:#0a0405;overflow:hidden}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="art" width="512" height="512"></canvas>
+<script>
+/* 虚空科技 模组图标：512×512 绘制，导出后可缩到 256（模组列表）/ 400（CurseForge）
+   风格与控制器界面一致：暗红黑底 + 烬色虚空之眼 + 金色蚀刻环。 */
+const W = 512, H = 512, CX = W / 2, CY = H / 2;
+const ctx = document.getElementById('art').getContext('2d');
+
+/* ---------- 底：径向渐变 + 斜纹 + 暗角 + 扫描线 ---------- */
+function base() {
+  for (let i = -H; i < W + H; i += 16) {
+    ctx.fillStyle = 'rgba(255,255,255,0.012)';
+    ctx.beginPath();
+    ctx.moveTo(i, 0); ctx.lineTo(i + 8, 0);
+    ctx.lineTo(i + 8 - H, H); ctx.lineTo(i - H, H);
+    ctx.closePath(); ctx.fill();
+  }
+
+  const g = ctx.createRadialGradient(CX, CY, 0, CX, CY, 300);
+  g.addColorStop(0.00, '#5a1016');
+  g.addColorStop(0.32, '#2b0a0d');
+  g.addColorStop(0.66, '#140708');
+  g.addColorStop(1.00, '#0a0405');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  const v = ctx.createRadialGradient(CX, CY, 150, CX, CY, 360);
+  v.addColorStop(0, 'rgba(0,0,0,0)');
+  v.addColorStop(1, 'rgba(0,0,0,0.55)');
+  ctx.fillStyle = v;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.018)';
+  for (let y = 0; y < H; y += 6) ctx.fillRect(0, y, W, 2);
+}
+
+/* ---------- 外框：圆角方形 + 角标 ---------- */
+function frame() {
+  const inset = 18, r = 26;
+  ctx.strokeStyle = 'rgba(200,162,74,0.55)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(inset + r, inset);
+  ctx.arcTo(W - inset, inset, W - inset, H - inset, r);
+  ctx.arcTo(W - inset, H - inset, inset, H - inset, r);
+  ctx.arcTo(inset, H - inset, inset, inset, r);
+  ctx.arcTo(inset, inset, W - inset, inset, r);
+  ctx.closePath();
+  ctx.stroke();
+
+  // 四角小方块
+  ctx.fillStyle = 'rgba(255,106,74,0.75)';
+  [[inset + 6, inset + 6], [W - inset - 12, inset + 6],
+   [inset + 6, H - inset - 12], [W - inset - 12, H - inset - 12]]
+    .forEach(([x, y]) => ctx.fillRect(x, y, 6, 6));
+}
+
+/* ---------- 蚀刻环 + 方位刻度 ---------- */
+function rings() {
+  [188, 176].forEach((r, i) => {
+    ctx.strokeStyle = i === 0 ? 'rgba(200,162,74,0.22)' : 'rgba(255,90,60,0.18)';
+    ctx.lineWidth = i === 0 ? 2 : 1;
+    ctx.beginPath(); ctx.arc(CX, CY, r, 0, Math.PI * 2); ctx.stroke();
+  });
+  // 8 个刻度
+  for (let k = 0; k < 8; k++) {
+    const a = (k * 45 - 90) * Math.PI / 180;
+    const r0 = 196, r1 = 210;
+    ctx.strokeStyle = 'rgba(200,162,74,0.5)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(CX + Math.cos(a) * r0, CY + Math.sin(a) * r0);
+    ctx.lineTo(CX + Math.cos(a) * r1, CY + Math.sin(a) * r1);
+    ctx.stroke();
+  }
+}
+
+/* ---------- 虚空之眼 ---------- */
+function eye() {
+  const r = 118;
+
+  // 外辉光
+  const glow = ctx.createRadialGradient(CX, CY, r * 0.5, CX, CY, r + 70);
+  glow.addColorStop(0, 'rgba(255,90,60,0.55)');
+  glow.addColorStop(0.5, 'rgba(180,30,20,0.25)');
+  glow.addColorStop(1, 'rgba(122,15,20,0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(CX, CY, r + 70, 0, Math.PI * 2); ctx.fill();
+
+  // 虹膜环（断口弧）
+  ctx.strokeStyle = 'rgba(255,106,74,0.85)';
+  ctx.lineWidth = 7;
+  ctx.beginPath(); ctx.arc(CX, CY, r + 10, -Math.PI * 0.72, Math.PI * 0.28); ctx.stroke();
+  ctx.strokeStyle = 'rgba(200,162,74,0.55)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(CX, CY, r + 22, 0, Math.PI * 2); ctx.stroke();
+
+  // 眼球
+  const g = ctx.createRadialGradient(CX, CY, 0, CX, CY, r);
+  g.addColorStop(0.00, '#ffd7c9');
+  g.addColorStop(0.08, '#ff5b3d');
+  g.addColorStop(0.20, '#a3161b');
+  g.addColorStop(0.44, '#4a0b0f');
+  g.addColorStop(0.72, '#1a0508');
+  g.addColorStop(1.00, '#060203');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(CX, CY, r, 0, Math.PI * 2); ctx.fill();
+
+  // 竖瞳
+  ctx.fillStyle = '#050202';
+  ctx.beginPath();
+  ctx.ellipse(CX, CY, 13, 74, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // 瞳孔高光
+  ctx.fillStyle = 'rgba(255,215,201,0.9)';
+  ctx.beginPath();
+  ctx.ellipse(CX - 4, CY - 26, 5, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+base();
+rings();
+eye();
+frame();
+</script>
+</body>
+</html>

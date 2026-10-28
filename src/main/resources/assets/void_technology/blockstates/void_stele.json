@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "void_technology:block/void_stele"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "down": "void_technology:block/void_stele_top",
+    "up": "void_technology:block/void_stele_top",
+    "north": "void_technology:block/void_stele_front",
+    "south": "void_technology:block/void_stele_side",
+    "east": "void_technology:block/void_stele_side",
+    "west": "void_technology:block/void_stele_side",
+    "particle": "void_technology:block/void_stele_side"
+  }
+}

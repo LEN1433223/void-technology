@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>虚空控制器 / 虚空样板供应器 · GUI 原型</title>
+<style>
+  :root{
+    /* 真实贴图按 1x 绘制，整屏用 transform 放大，字体仍然清晰 */
+    --zoom: 2.4;
+
+    --bg-deep:#050304;
+    --panel:#130d0f;
+    --panel-2:#1c1214;
+    --slot:#0b0708;
+    --edge:#000;
+    --hl:#3d2228;
+    --blood:#7a0f14;
+    --blood-2:#b3161c;
+    --ember:#ff3b2f;
+    --text:#ecdcdc;
+    --dim:#a08688;
+    --ok:#5ac36a;
+    --warn:#d9a63a;
+    --err:#d2473f;
+    --cyan:#37a0b0;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    padding:26px 20px 70px;
+    background:
+      radial-gradient(1200px 620px at 50% -12%, #2a0b0f 0%, #0a0708 56%, #050304 100%);
+    color:var(--text);
+    font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1{
+    font-size:19px;font-weight:600;letter-spacing:.5px;margin:0 0 4px;
+  }
+  h1 small{font-weight:400;color:var(--dim);font-size:13px;margin-left:10px}
+  .lead{color:var(--dim);font-size:13px;margin:0 0 22px;line-height:1.7;max-width:900px}
+  .lead b{color:var(--text)}
+
+  /* ---------- 工具条 ---------- */
+  .toolbar{
+    display:flex;flex-wrap:wrap;gap:22px;align-items:center;
+    background:#0e090a;border:1px solid #2a1a1d;border-radius:10px;
+    padding:12px 16px;margin-bottom:26px;
+  }
+  .group{display:flex;align-items:center;gap:8px}
+  .group>label{font-size:12px;color:var(--dim);letter-spacing:.5px}
+  .seg{display:flex;border:1px solid #33211f;border-radius:6px;overflow:hidden}
+  .seg button{
+    appearance:none;border:0;background:#160e10;color:var(--dim);
+    font:inherit;font-size:12px;padding:5px 11px;cursor:pointer;
+    border-right:1px solid #33211f;
+  }
+  .seg button:last-child{border-right:0}
+  .seg button:hover{background:#221317;color:var(--text)}
+  .seg button[aria-pressed="true"]{background:var(--blood);color:#fff}
+
+  /* ---------- 两台设备并排 ---------- */
+  .stage{display:flex;gap:46px;flex-wrap:wrap;align-items:flex-start}
+  .device{display:flex;flex-direction:column;gap:10px}
+  .device>h2{
+    font-size:13px;font-weight:600;letter-spacing:1px;margin:0;
+    color:#d8c2c4;text-transform:uppercase;
+  }
+  .device>h2 span{color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0}
+
+  /* 1x 画布 + 放大 */
+  .frame{
+    width:calc(176px * var(--zoom));
+    height:calc(166px * var(--zoom));
+    position:relative;
+  }
+  .screen{
+    position:absolute;top:0;left:0;
+    width:176px;height:166px;
+    transform:scale(var(--zoom));
+    transform-origin:top left;
+    font-family:"Courier New",monospace;
+    font-size:8px;line-height:1.2;
+    color:var(--text);
+    overflow:hidden;
+    image-rendering:pixelated;
+  }
+
+  /* ---------- 控制器：红黑虚空 ---------- */
+  .ctrl{
+    background:
+      radial-gradient(46px 40px at 50% 42%, #4a0e12 0%, #25080b 42%, #120709 70%, #0b0507 100%),
+      repeating-linear-gradient(45deg, #140a0d 0 2px, #0f0709 2px 4px);
+    border:1px solid var(--edge);
+    box-shadow:
+      inset 0 0 0 2px #2a1116,
+      inset 0 0 0 3px #150a0c,
+      inset 0 0 18px #000;
+  }
+  /* 四角铆钉 */
+  .ctrl::before,.ctrl::after,.ctrl .rivet-l,.ctrl .rivet-r{content:""}
+  .rivet{
+    position:absolute;width:3px;height:3px;background:#5a2027;
+    box-shadow:0 0 2px #000;
+  }
+  .rivet.n{top:4px;left:4px} .rivet.ne{top:4px;right:4px}
+  .rivet.sw{bottom:4px;left:4px} .rivet.se{bottom:4px;right:4px}
+
+  .ctrl-head{
+    position:relative;
+    margin:5px 6px 0;
+    height:13px;
+    display:flex;align-items:center;justify-content:space-between;
+    border-bottom:1px solid #43151a;
+    padding:0 2px;
+  }
+  .ctrl-head .t{font-size:8px;letter-spacing:1px;color:#e6b9bb}
+  .ctrl-head .rev{font-size:7px;color:#7d4a4f;letter-spacing:.5px}
+
+  /* 虚空之眼（中央装饰） */
+  .void-eye{
+    position:absolute;left:50%;top:44px;transform:translateX(-50%);
+    width:34px;height:34px;border-radius:50%;
+    background:
+      radial-gradient(circle at 50% 50%, #ffd7c9 0 2px, #ff5b3d 3px, #8f1116 7px, #2a070a 12px, #120608 17px);
+    box-shadow:0 0 14px #7a0f14, inset 0 0 8px #000;
+    opacity:.9;
+  }
+  .void-eye::after{
+    content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:3px;height:14px;border-radius:2px;background:#0a0405;
+    box-shadow:0 0 3px #000;
+  }
+  /* 未成型：眼睛熄灭 */
+  .ctrl[data-structure="unformed"] .void-eye{
+    background:radial-gradient(circle at 50% 50%, #2a1c1e 0 6px, #150d0f 12px, #0c0708 17px);
+    box-shadow:inset 0 0 8px #000;opacity:.75;
+  }
+  .ctrl[data-structure="unformed"] .void-eye::after{width:16px;height:2px;background:#0a0405}
+
+  /* 信息行 */
+  .rows{
+    position:absolute;left:8px;right:8px;bottom:9px;
+    display:flex;flex-direction:column;gap:4px;
+  }
+  .row{
+    display:flex;align-items:center;gap:5px;
+    background:linear-gradient(180deg,#1b1013,#120a0c);
+    border:1px solid #35171c;border-radius:2px;
+    padding:3px 5px;
+    box-shadow:inset 0 1px 0 #2c1418, 0 1px 0 #000;
+  }
+  .row .k{color:var(--dim);font-size:7px;letter-spacing:.5px;flex:0 0 42px}
+  .row .v{color:var(--text);font-size:8px;flex:1;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .led{
+    width:4px;height:4px;border-radius:50%;flex:0 0 4px;
+    background:#3a2a2c;box-shadow:0 0 0 1px #000;
+  }
+  .led.ok{background:var(--ok);box-shadow:0 0 4px var(--ok),0 0 0 1px #000}
+  .led.err{background:var(--err);box-shadow:0 0 4px var(--err),0 0 0 1px #000}
+  .led.warn{background:var(--warn);box-shadow:0 0 4px var(--warn),0 0 0 1px #000}
+  .v.ok{color:#8ee69c} .v.err{color:#ff8a80} .v.dim{color:var(--dim)}
+
+  /* 扫描线 */
+  .scan{
+    position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(0deg, rgba(255,255,255,.022) 0 1px, transparent 1px 3px);
+  }
+
+  /* ---------- 供应器：复用 AE2 布局 + 红黑外框层 ---------- */
+  .prov{
+    background:#0d080a;
+    border:1px solid var(--edge);
+    box-shadow:inset 0 0 0 2px #2a1116, inset 0 0 0 3px #150a0c;
+    padding:0;
+  }
+  /* 叠加层：外框红黑，槽位区透明（实现时贴图此处 alpha=0） */
+  .prov-overlay{
+    position:absolute;inset:0;pointer-events:none;
+    border:3px solid #4a1216;
+    box-shadow:inset 0 0 0 1px #2a0d10, inset 0 0 14px rgba(122,15,20,.35);
+  }
+  .prov-overlay::before{
+    content:"";position:absolute;inset:3px;
+    border:1px solid #35171c;
+  }
+  /* AE2 风格的内嵌面板 */
+  .ae2-panel{
+    position:absolute;left:6px;right:6px;top:14px;bottom:6px;
+    background:#2b2b2b;
+    border:1px solid #000;
+    box-shadow:inset 1px 1px 0 #3d3d3d, inset -1px -1px 0 #1c1c1c;
+    padding:5px;
+  }
+  .prov-head{
+    position:absolute;left:8px;top:3px;
+    font-size:8px;color:#c9b6b8;letter-spacing:.5px;
+  }
+  .grid9{display:grid;grid-template-columns:repeat(3,16px);gap:2px}
+  .upg{display:grid;grid-template-columns:16px;gap:2px;margin-left:6px}
+  .prov-body{display:flex}
+  .slot{
+    width:16px;height:16px;position:relative;cursor:pointer;
+    background:#8b8b8b;
+    box-shadow:
+      inset 1px 1px 0 #373737,
+      inset -1px -1px 0 #fff;
+  }
+  .slot::after{
+    content:"";position:absolute;inset:3px;background:#0f0a0b;
+    box-shadow:inset 0 0 0 1px #000;
+  }
+  .slot.has::after{background:radial-gradient(circle at 50% 45%, #3a3f6b 0 55%, #232744 100%)}
+  .slot .badge{
+    position:absolute;right:0;top:0;width:4px;height:4px;z-index:2;
+    background:var(--ok);box-shadow:0 0 3px var(--ok)
+  }
+  .slot .badge.warn{background:var(--warn);box-shadow:0 0 3px var(--warn)}
+  .slot .badge.err{background:var(--err);box-shadow:0 0 3px var(--err)}
+  .slot:hover{filter:brightness(1.15)}
+  .slot .icon{
+    position:absolute;inset:2px;z-index:3;display:none;
+    align-items:center;justify-content:center;
+    font-size:9px;line-height:1;color:#dfe6ff;text-shadow:0 0 3px #000;
+  }
+  .slot.has .icon{display:flex}
+
+  .inv-label{font-size:7px;color:#8f8f8f;margin:4px 0 2px}
+  .inv-grid{display:grid;grid-template-columns:repeat(9,16px);gap:2px}
+  .hotbar{margin-top:3px}
+
+  .prov-status{
+    position:absolute;left:6px;right:6px;bottom:3px;
+    display:flex;justify-content:space-between;
+    font-size:7px;color:#9a7f82;
+  }
+
+  /* ================= 流动光效（控制器） ================= */
+  @keyframes ctrl-sweep{
+    0%   { background-position: -70% 0; }
+    100% { background-position: 170% 0; }
+  }
+  @keyframes spin{ to { transform: rotate(360deg); } }
+  @keyframes eye-pulse{
+    0%,100% { box-shadow:0 0 10px #7a0f14, inset 0 0 8px #000; }
+    50%     { box-shadow:0 0 20px #b3161c, 0 0 36px rgba(255,59,47,.35), inset 0 0 8px #000; }
+  }
+  @keyframes ember-drift{
+    0%   { transform: translateY(7px) scale(.9);  opacity:0; }
+    18%  { opacity:.9; }
+    78%  { opacity:.45; }
+    100% { transform: translateY(-17px) scale(1); opacity:0; }
+  }
+  @keyframes led-breath{
+    0%,100% { opacity:.5; }
+    50%     { opacity:1; }
+  }
+
+  /* ① 斜向扫光：一条淡淡的光带缓慢横穿面板 */
+  .ctrl::before{
+    content:"";
+    position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(105deg,
+      transparent 38%,
+      rgba(255,120,90,.09) 47%,
+      rgba(255,190,160,.20) 50%,
+      rgba(255,120,90,.09) 53%,
+      transparent 62%);
+    background-size:240% 100%;
+    animation:ctrl-sweep 7.5s linear infinite;
+    mix-blend-mode:screen;
+  }
+
+  /* ② 外框能量流：一束烬光沿边框环绕 */
+  .ctrl::after{
+    content:"";
+    position:absolute; inset:0; pointer-events:none;
+    padding:3px;
+    background:conic-gradient(from 0deg,
+      transparent 0 70%,
+      rgba(255,96,60,.15) 78%,
+      rgba(255,110,70,.85) 84%,
+      rgba(255,96,60,.15) 90%,
+      transparent 100%);
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;
+            mask-composite:exclude;
+    animation:spin 6.5s linear infinite;
+    opacity:.9;
+  }
+
+  /* ③ 虚空之眼：呼吸 + 环绕虹膜光 */
+  .ctrl .void-eye{ animation:eye-pulse 3.6s ease-in-out infinite; }
+  .ctrl .void-eye::before{
+    content:"";
+    position:absolute; inset:-5px; border-radius:50%;
+    background:conic-gradient(from 0deg,
+      transparent 0 76%,
+      rgba(255,90,60,.55) 88%,
+      transparent 100%);
+    -webkit-mask:radial-gradient(circle, transparent 0 60%, #000 62% 100%);
+            mask:radial-gradient(circle, transparent 0 60%, #000 62% 100%);
+    animation:spin 3.8s linear infinite;
+  }
+
+  /* ④ 上浮的烬点 */
+  .ctrl .embers{
+    position:absolute; inset:0; pointer-events:none;
+    background-image:
+      radial-gradient(1.5px 1.5px at 24% 76%, rgba(255,130,90,.95), transparent 65%),
+      radial-gradient(1px   1px   at 62% 84%, rgba(255,80,60,.9),  transparent 65%),
+      radial-gradient(1.5px 1.5px at 79% 69%, rgba(255,170,130,.8), transparent 65%);
+    background-repeat:no-repeat;
+    animation:ember-drift 5.5s linear infinite;
+  }
+
+  /* 状态灯呼吸 */
+  .ctrl .row .led{ animation:led-breath 2.8s ease-in-out infinite; }
+
+  /* ---- 状态联动 ---- */
+  /* 离线：所有光效冻结并整体去饱和 */
+  .ctrl[data-online="off"]{ filter:saturate(.4) brightness(.85); }
+  .ctrl[data-online="off"]::before,
+  .ctrl[data-online="off"]::after,
+  .ctrl[data-online="off"] .embers,
+  .ctrl[data-online="off"] .void-eye,
+  .ctrl[data-online="off"] .void-eye::before,
+  .ctrl[data-online="off"] .row .led{ animation-play-state:paused; }
+
+  /* 有任务：扫光与呼吸加速，整体更"活" */
+  .ctrl[data-task="run"]::before{ animation-duration:2.6s; }
+  .ctrl[data-task="run"] .void-eye{ animation-duration:1.5s; }
+  .ctrl[data-task="run"]::after{ animation-duration:3.2s; }
+
+  /* 未成型：眼睛与烬点熄灭，只剩边框微光 */
+  .ctrl[data-structure="unformed"] .void-eye,
+  .ctrl[data-structure="unformed"] .void-eye::before{ animation:none; }
+  .ctrl[data-structure="unformed"] .embers{ display:none; }
+  .ctrl[data-structure="unformed"]::before{ opacity:.35; }
+
+  @media (prefers-reduced-motion: reduce){
+    .ctrl::before,.ctrl::after,.ctrl .embers,.ctrl .void-eye,
+    .ctrl .void-eye::before,.ctrl .row .led{ animation:none !important; }
+  }
+
+  /* 说明表 */
+  .spec{
+    margin-top:44px;max-width:940px;
+    border:1px solid #2a1a1d;border-radius:10px;background:#0e090a;
+  }
+  .spec h3{margin:0;padding:12px 16px;font-size:13px;border-bottom:1px solid #2a1a1d;color:#d8c2c4;letter-spacing:.5px}
+  .spec table{width:100%;border-collapse:collapse;font-size:12px}
+  .spec th,.spec td{padding:7px 16px;text-align:left;border-bottom:1px solid #1b1114}
+  .spec th{color:var(--dim);font-weight:500}
+  .spec td{color:#cbb9bb}
+  .spec code{background:#1b1114;padding:1px 5px;border-radius:3px;color:#e8b9b9;font-size:11px}
+  .swatch{display:inline-block;width:10px;height:10px;border:1px solid #000;vertical-align:-1px;margin-right:5px}
+  .note{padding:10px 16px;font-size:12px;color:var(--dim);line-height:1.7}
+</style>
+</head>
+<body>
+
+<h1>虚空控制器 / 虚空样板供应器 <small>GUI 原型 · 1x 绘制后整屏放大（真实贴图 176×166）</small></h1>
+<p class="lead">
+  左侧控制器只有三行状态：<b>结构、目前任务、在线状态</b>。右侧供应器<b>布局与 AE2 样板供应器一致</b>，
+  只在其上叠加一层与控制器同风格的红黑边框层（实现时该层中央槽位区 <code>alpha = 0</code>，不遮挡 AE2 原有槽位与文字）。
+  用下面的开关切换状态看观感。
+</p>
+
+<div class="toolbar">
+  <div class="group">
+    <label>结构</label>
+    <div class="seg" data-target="structure">
+      <button data-value="formed" aria-pressed="true">已成型</button>
+      <button data-value="unformed" aria-pressed="false">未成型</button>
+    </div>
+  </div>
+  <div class="group">
+    <label>网络</label>
+    <div class="seg" data-target="online">
+      <button data-value="on" aria-pressed="true">在线</button>
+      <button data-value="off" aria-pressed="false">离线</button>
+    </div>
+  </div>
+  <div class="group">
+    <label>任务</label>
+    <div class="seg" data-target="task">
+      <button data-value="none" aria-pressed="true">无任务</button>
+      <button data-value="run" aria-pressed="false">销毁中：石头</button>
+    </div>
+  </div>
+  <div class="group">
+    <label>供应器样板</label>
+    <div class="seg" data-target="slots">
+      <button data-value="one" aria-pressed="true">1 个</button>
+      <button data-value="mixed" aria-pressed="false">混合状态</button>
+      <button data-value="empty" aria-pressed="false">空</button>
+    </div>
+  </div>
+</div>
+
+<div class="stage">
+
+  <!-- ============ 虚空控制器 ============ -->
+  <div class="device">
+    <h2>虚空控制器 <span>· 任务面板</span></h2>
+    <div class="frame">
+      <div class="screen ctrl" id="ctrl" data-structure="formed" data-online="on" data-task="none">
+        <div class="ctrl-head">
+          <span class="t">虚空控制器</span>
+          <span class="rev">VOID CTRL</span>
+        </div>
+
+        <div class="void-eye"></div>
+
+        <div class="rows">
+          <div class="row">
+            <span class="led ok" id="led-structure"></span>
+            <span class="k">结构状态</span>
+            <span class="v ok" id="val-structure">结构已成型</span>
+          </div>
+          <div class="row">
+            <span class="led warn" id="led-task"></span>
+            <span class="k">目前任务</span>
+            <span class="v dim" id="val-task">无任务</span>
+          </div>
+          <div class="row">
+            <span class="led ok" id="led-online"></span>
+            <span class="k">网络状态</span>
+            <span class="v ok" id="val-online">在线</span>
+          </div>
+        </div>
+
+        <span class="rivet n"></span><span class="rivet ne"></span>
+        <span class="rivet sw"></span><span class="rivet se"></span>
+        <div class="embers"></div>
+        <div class="scan"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 虚空样板供应器 ============ -->
+  <div class="device">
+    <h2>虚空样板供应器 <span>· AE2 布局 + 红黑叠加层</span></h2>
+    <div class="frame">
+      <div class="screen prov" id="prov">
+        <div class="prov-head">虚空样板供应器</div>
+
+        <div class="ae2-panel">
+          <div class="prov-body">
+            <div class="grid9" id="grid9"></div>
+            <div class="upg" id="upg"></div>
+          </div>
+
+          <div class="inv-label">物品栏</div>
+          <div class="inv-grid" id="inv"></div>
+          <div class="inv-grid hotbar" id="hotbar"></div>
+        </div>
+
+        <div class="prov-status">
+          <span id="prov-adj">相邻控制器：已连接</span>
+          <span id="prov-net">频道 1/8 · AE ▓▓▓░░</span>
+        </div>
+
+        <div class="prov-overlay"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 规格 ============ -->
+<div class="spec">
+  <h3>实现规格（贴图与坐标）</h3>
+  <table>
+    <tr><th>项目</th><th>值</th></tr>
+    <tr><td>GUI 贴图尺寸</td><td><code>176 × 166</code>（1x，与 AE2 样板供应器同尺寸，便于叠加层对齐）</td></tr>
+    <tr><td>放大显示</td><td>原型用 <code>--zoom: 2.4</code> 放大；游戏内由 Minecraft 自身按 GUI Scale 放大</td></tr>
+    <tr><td>控制器信息行</td><td>三行，<code>x=8</code>，行高 12，自底向上 <code>y=9 / 24 / 39</code>，行宽 160</td></tr>
+    <tr><td>虚空之眼</td><td>中心 <code>(88, 61)</code>，直径 34</td></tr>
+    <tr><td>供应器样板槽</td><td>3×3，起点 <code>(11, 19)</code>，间距 18（格 16 + 空 2）</td></tr>
+    <tr><td>供应器升级槽</td><td>右侧 1 列 ×3，起点 <code>(68, 19)</code>（实现时以 AE2 原版坐标为准）</td></tr>
+    <tr><td>玩家背包</td><td>9×3 + 快捷栏 9，起点 <code>(11, 84)</code></td></tr>
+    <tr><td>叠加层</td><td>与控制器同红黑外框；中央内容区 <code>alpha=0</code>，仅描边+四角装饰</td></tr>
+  </table>
+  <div class="note">
+    配色：<span class="swatch" style="background:#0b0708"></span>#0b0708 底 ·
+    <span class="swatch" style="background:#4a1216"></span>#4a1216 边 ·
+    <span class="swatch" style="background:#7a0f14"></span>#7a0f14 主红 ·
+    <span class="swatch" style="background:#b3161c"></span>#b3161c 高光红 ·
+    <span class="swatch" style="background:#ff3b2f"></span>#ff3b2f 烬光 ·
+    <span class="swatch" style="background:#ecdcdc"></span>#ecdcdc 文字
+  </div>
+</div>
+
+<script>
+(function(){
+  const ctrl = document.getElementById('ctrl');
+  const prov = document.getElementById('prov');
+
+  // ---- 控制器状态 ----
+  const state = {structure:'formed', online:'on', task:'none'};
+
+  function renderCtrl(){
+    ctrl.dataset.structure = state.structure;
+    ctrl.dataset.online = state.online;
+    ctrl.dataset.task = state.task;
+
+    const formed = state.structure === 'formed';
+    document.getElementById('val-structure').textContent = formed ? '结构已成型' : '结构未成型';
+    document.getElementById('val-structure').className = 'v ' + (formed ? 'ok' : 'err');
+    document.getElementById('led-structure').className = 'led ' + (formed ? 'ok' : 'err');
+
+    const online = state.online === 'on';
+    document.getElementById('val-online').textContent = online ? '在线' : '离线';
+    document.getElementById('val-online').className = 'v ' + (online ? 'ok' : 'err');
+    document.getElementById('led-online').className = 'led ' + (online ? 'ok' : 'err');
+
+    const hasTask = state.task === 'run';
+    document.getElementById('val-task').textContent = hasTask ? '销毁中 · 石头 ×1' : '无任务';
+    document.getElementById('val-task').className = 'v ' + (hasTask ? '' : 'dim');
+    document.getElementById('led-task').className = 'led ' + (hasTask ? 'warn' : 'warn');
+
+    // 供应器的相邻状态跟着控制器走
+    const adj = document.getElementById('prov-adj');
+    if (formed && online){
+      adj.textContent = '相邻控制器：已连接';
+      adj.style.color = '#8ee69c';
+    } else {
+      adj.textContent = formed ? '相邻控制器：离线' : '相邻控制器：未成型';
+      adj.style.color = '#ff8a80';
+    }
+    document.getElementById('prov-net').style.color = online ? '#9a7f82' : '#ff8a80';
+  }
+
+  // ---- 供应器槽位 ----
+  const grid = document.getElementById('grid9');
+  const upg  = document.getElementById('upg');
+  const inv  = document.getElementById('inv');
+  const hot  = document.getElementById('hotbar');
+
+  for (let i=0;i<9;i++){
+    const s = document.createElement('div');
+    s.className = 'slot';
+    s.title = '样板槽 ' + (i+1) + '（点击切换示例）';
+    s.innerHTML = '<span class="icon">▣</span><span class="badge" style="display:none"></span>';
+    s.addEventListener('click', ()=>{
+      s.classList.toggle('has');
+      const b = s.querySelector('.badge');
+      b.style.display = s.classList.contains('has') ? 'block' : 'none';
+    });
+    grid.appendChild(s);
+  }
+  for (let i=0;i<3;i++){
+    const s = document.createElement('div');
+    s.className = 'slot';
+    s.title = '升级槽 ' + (i+1);
+    upg.appendChild(s);
+  }
+  for (let i=0;i<27+9;i++){
+    const s = document.createElement('div');
+    s.className = 'slot';
+    (i<27?inv:hot).appendChild(s);
+  }
+
+  function renderSlots(mode){
+    const slots = [...grid.children];
+    slots.forEach((s,i)=>{
+      s.classList.remove('has');
+      const b = s.querySelector('.badge');
+      b.style.display = 'none'; b.className = 'badge';
+      if (mode === 'one' && i === 0){
+        s.classList.add('has');
+        b.style.display='block';
+      } else if (mode === 'mixed'){
+        if (i === 0){ s.classList.add('has'); b.style.display='block'; }
+        if (i === 1){ s.classList.add('has'); b.style.display='block'; b.classList.add('warn'); }
+        if (i === 4){ s.classList.add('has'); b.style.display='block'; b.classList.add('err'); }
+      }
+    });
+  }
+
+  // ---- 开关绑定 ----
+  document.querySelectorAll('.seg').forEach(seg=>{
+    seg.addEventListener('click', e=>{
+      const btn = e.target.closest('button'); if(!btn) return;
+      [...seg.children].forEach(b=>b.setAttribute('aria-pressed', String(b===btn)));
+      const key = seg.dataset.target;
+      const val = btn.dataset.value;
+      if (key === 'slots'){ renderSlots(val); return; }
+      state[key] = val;
+      renderCtrl();
+    });
+  });
+
+  renderCtrl();
+  renderSlots('one');
+})();
+</script>
+</body>
+</html>

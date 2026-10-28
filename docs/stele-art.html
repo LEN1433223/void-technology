@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>虚空石碑 · 方块贴图</title>
+<style>html,body{margin:0;padding:0;background:transparent;overflow:hidden}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="faces" width="384" height="128"></canvas>
+<script>
+/* 虚空石碑：三个 16×16 面（front / side / top），按 8× 放大绘制，导出后缩回 16×16
+   配色沿用它虚空控制器/符文盘：石体 #1A0E12 系、蚀刻缝 #0A0507、烬色 #FF6A4A、金 #D8B25C
+   设计意图：石碑正面是一道纵向虚空裂口（顶部有一枚小眼），侧面是窄凹槽与符文刻痕，顶面是同心蚀刻圆。 */
+const S = 8, F = 16, P = F * S;
+const ctx = document.getElementById('faces').getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+function px(x, y, color, w = 1, h = 1) {
+  ctx.fillStyle = color;
+  ctx.fillRect(Math.round(x) * S, Math.round(y) * S, w * S, h * S);
+}
+
+/* 石碑石体：竖向纹理 + 边框明暗 */
+function stone(base, edgeDark, edgeLight) {
+  px(0, 0, base, F, F);
+  // 竖向石纹（每 3 列一条极淡的深浅变化）
+  for (let x = 1; x < F; x += 3) px(x, 0, edgeDark, 1, F);
+  for (let x = 2; x < F; x += 3) px(x, 0, edgeLight, 1, F);
+  // 外框
+  px(0, 0, edgeLight, F, 1);
+  px(0, 0, edgeLight, 1, F);
+  px(0, F - 1, edgeDark, F, 1);
+  px(F - 1, 0, edgeDark, 1, F);
+}
+
+/* ---- front：纵向虚空裂口 + 顶部小眼 + 金符文 ---- */
+function drawFront() {
+  stone('#1E1114', '#150B0E', '#2A171B');
+
+  // 凹槽外框（内凹感：上/左暗，下/右亮）
+  px(5, 2, '#0A0507', 6, 12);
+  px(5, 2, '#080405', 6, 1);
+  px(5, 2, '#080405', 1, 12);
+  px(5, 13, '#3A1F24', 6, 1);
+  px(10, 2, '#3A1F24', 1, 12);
+
+  // 裂口：从下往上的烬色渐变（越往下越亮）
+  const grad = ['#5A0B10', '#7A0F14', '#A3151B', '#C81D22', '#FF6A4A'];
+  for (let i = 0; i < grad.length; i++) {
+    px(7, 11 - i, grad[i], 2, 1);
+  }
+  // 裂口顶部的虚空之眼
+  px(7, 4, '#2A070A', 2, 2);
+  px(7, 4, '#FF6A4A');
+  px(8, 5, '#FFD7C9');
+  // 眼周的蚀刻弧
+  px(6, 3, '#3A1F24', 4, 1);
+  px(6, 6, '#3A1F24', 4, 1);
+
+  // 金符文：上下各两枚
+  px(3, 4, '#D8B25C'); px(12, 4, '#8A6A2A');
+  px(3, 10, '#8A6A2A'); px(12, 10, '#D8B25C');
+  // 底部基座横线
+  px(2, 14, '#2A171B', 12, 1);
+}
+
+/* ---- side：窄凹槽 + 刻痕 ---- */
+function drawSide() {
+  stone('#1A0F12', '#120A0C', '#251419');
+
+  // 中部窄凹槽
+  px(6, 2, '#0A0507', 4, 12);
+  px(6, 2, '#080405', 4, 1);
+  px(6, 2, '#080405', 1, 12);
+  px(9, 2, '#33191E', 1, 12);
+
+  // 刻痕（每 3 行一道短刻）
+  for (let y = 4; y <= 12; y += 3) {
+    px(7, y, '#3A1F24', 2, 1);
+  }
+  // 凹槽底部一点余烬
+  px(7, 12, '#8F1116', 2, 1);
+  px(2, 7, '#2A171B', 1, 2);
+  px(13, 7, '#2A171B', 1, 2);
+}
+
+/* ---- top：同心蚀刻圆 + 中央裂口 ---- */
+function drawTop() {
+  stone('#1A0F12', '#120A0C', '#251419');
+
+  const cx = 7.5, cy = 7.5;
+  // 两个同心圆（逐点画，保证像素感）
+  for (let a = 0; a < 360; a += 6) {
+    const r1 = 5.2, r2 = 3.4;
+    const a1 = a * Math.PI / 180;
+    px(Math.round(cx + Math.cos(a1) * r1), Math.round(cy + Math.sin(a1) * r1), '#3A1F24');
+    if (a % 12 === 0) {
+      px(Math.round(cx + Math.cos(a1) * r2), Math.round(cy + Math.sin(a1) * r2), '#4A2A30');
+    }
+  }
+  // 中央裂口
+  px(7, 5, '#0A0507', 2, 6);
+  px(7, 6, '#A3151B', 2, 1);
+  px(7, 8, '#FF6A4A', 1, 1);
+  px(8, 9, '#8F1116', 1, 1);
+  // 四向刻度
+  px(7, 1, '#D8B25C'); px(7, 13, '#8A6A2A');
+  px(1, 7, '#D8B25C'); px(13, 7, '#8A6A2A');
+}
+
+/* ---- 合成：三面横向排列 ---- */
+drawFront(); ctx.save(); ctx.translate(P, 0); drawSide(); ctx.restore();
+ctx.save(); ctx.translate(P * 2, 0); drawTop(); ctx.restore();
+</script>
+</body>
+</html>

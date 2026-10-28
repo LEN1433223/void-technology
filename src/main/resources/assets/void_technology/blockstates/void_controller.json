@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "formed=false": {
+      "model": "void_technology:block/void_controller"
+    },
+    "formed=true": {
+      "model": "void_technology:block/void_controller_formed"
+    }
+  }
+}

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>虚空样板供应器 · 方块贴图</title>
+<style>html,body{margin:0;padding:0;background:transparent;overflow:hidden}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="faces" width="384" height="128"></canvas>
+<script>
+/* 三个 16×16 面：front / side / top（按 8× 放大绘制，导出后缩回 16×16 像素级对齐）
+   配色与控制器一致：底 #0B0E12 · 面 #171C24 · 描边 #2A3038 · 金 #C8A24A · 红 #B3161C */
+const S = 8, F = 16, P = F * S;             // 每个面 128×128 渲染像素
+const ctx = document.getElementById('faces').getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+function px(x, y, color, w = 1, h = 1) {
+  ctx.fillStyle = color;
+  ctx.fillRect(Math.round(x) * S, Math.round(y) * S, w * S, h * S);
+}
+
+function plate(base) {
+  px(0, 0, base, F, F);
+  // 外描边 + 顶部高光 + 底部阴影
+  px(0, 0, '#2A3038', F, 1);
+  px(0, F - 1, '#070A0D', F, 1);
+  px(0, 0, '#2A3038', 1, F);
+  px(F - 1, 0, '#070A0D', 1, F);
+  px(1, 1, '#232B36', F - 2, 1);
+  // 四角铆钉
+  [[2, 2], [13, 2], [2, 13], [13, 13]].forEach(([x, y]) => px(x, y, '#3A4350'));
+}
+
+/* ---- front：样板插口 ---- */
+function drawFront() {
+  plate('#171C24');
+  // 中央插口
+  px(4, 4, '#0A0D11', 8, 8);
+  px(4, 4, '#2A3038', 8, 1);
+  px(4, 11, '#050709', 8, 1);
+  px(4, 4, '#2A3038', 1, 8);
+  px(11, 4, '#050709', 1, 8);
+  // 插口内的样板线（红）
+  px(6, 6, '#B3161C', 4, 1);
+  px(6, 8, '#7A0F14', 4, 1);
+  px(6, 10, '#B3161C', 2, 1);
+  // 顶部指示灯（金）
+  px(7, 2, '#C8A24A');
+  px(8, 2, '#8A6A2A');
+}
+
+/* ---- side：纵向散热缝 ---- */
+function drawSide() {
+  plate('#141A21');
+  for (let y = 3; y < 13; y += 2) {
+    px(4, y, '#0A0D11', 8, 1);
+    px(4, y + 1, '#232B36', 8, 1);
+  }
+  px(2, 7, '#3A4350', 1, 2);
+  px(13, 7, '#3A4350', 1, 2);
+}
+
+/* ---- top：符文环 ---- */
+function drawTop() {
+  plate('#171C24');
+  // 中心环
+  const cx = 7.5, cy = 7.5, r = 4.2;
+  for (let y = 0; y < F; y++) {
+    for (let x = 0; x < F; x++) {
+      const d = Math.hypot(x - cx, y - cy);
+      if (d > r - 0.5 && d <= r + 0.5) px(x, y, '#2A3038');
+    }
+  }
+  // 中心红核
+  px(7, 7, '#B3161C', 2, 2);
+  px(7, 7, '#FF3B2F');
+  // 四个方位刻度（金）
+  px(7, 2, '#C8A24A');
+  px(7, 13, '#C8A24A');
+  px(2, 7, '#C8A24A');
+  px(13, 7, '#C8A24A');
+}
+
+drawFront();          // 画在左
+ctx.save(); ctx.translate(P, 0);     drawSide();  ctx.restore();
+ctx.save(); ctx.translate(2 * P, 0); drawTop();   ctx.restore();
+</script>
+</body>
+</html>

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>虚空控制器 · 方块贴图 16×16</title>
+<style>
+  :root{ --zoom:24; }
+  *{box-sizing:border-box}
+  body{
+    margin:0;padding:24px 20px 60px;color:#ecdcdc;
+    background:radial-gradient(1000px 520px at 50% -10%,#2a0b0f 0%,#0a0708 58%,#050304 100%);
+    font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+  }
+  h1{font-size:17px;font-weight:600;margin:0 0 6px}
+  h1 small{font-weight:400;font-size:12px;color:#a08688;margin-left:8px}
+  p.lead{color:#a08688;font-size:12.5px;line-height:1.7;margin:0 0 20px;max-width:820px}
+  .wrap{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+  .card{background:#0e090a;border:1px solid #2a1a1d;border-radius:10px;padding:14px}
+  .card h2{font-size:12px;letter-spacing:.6px;color:#d8c2c4;margin:0 0 10px;text-transform:uppercase}
+  canvas#grid{width:384px;height:384px;image-rendering:pixelated;cursor:crosshair;background:#000;border:1px solid #000}
+  .palette{display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:10px;width:384px}
+  .sw{height:26px;border:2px solid #2a1a1d;border-radius:4px;cursor:pointer;position:relative}
+  .sw[aria-pressed="true"]{border-color:#ff3b2f;box-shadow:0 0 8px #7a0f14}
+  .tools{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  button{
+    background:#160e10;border:1px solid #33211f;color:#d8c2c4;border-radius:6px;
+    padding:6px 12px;font:inherit;font-size:12px;cursor:pointer;
+  }
+  button:hover{background:#221317;color:#fff}
+  button.primary{background:#7a0f14;border-color:#b3161c;color:#fff}
+  .previews{display:flex;gap:18px;align-items:flex-end;margin-top:4px}
+  .prev-box{text-align:center;font-size:11px;color:#a08688}
+  .prev-box canvas{image-rendering:pixelated;background:#000;border:1px solid #000;display:block;margin-bottom:6px}
+  .tile{width:192px;height:192px;image-rendering:pixelated}
+  textarea{
+    width:420px;height:110px;background:#0b0708;color:#cbb9bb;border:1px solid #33211f;
+    border-radius:6px;padding:8px;font-family:Consolas,monospace;font-size:11px;resize:vertical;
+  }
+  .hint{font-size:11.5px;color:#7d6b6d;line-height:1.6;margin-top:8px;max-width:420px}
+</style>
+</head>
+<body>
+
+<h1>虚空控制器 · 方块贴图 <small>16×16 像素 · 红黑虚空风</small></h1>
+<p class="lead">
+  左边画布是 16×16 的真实像素格（显示放大 24 倍）。点调色板选颜色，点格子落笔，右键擦除。
+  画好之后「导出 16×16 PNG」会下载真正的方块贴图；同一份数据也会被 <code>tools/gen_textures.py</code>
+  从本页抽出、写进 <code>assets/void_technology/textures/block/void_controller.png</code>，所以游戏里和这里完全一致。
+</p>
+
+<div class="wrap">
+  <div class="card">
+    <h2>像素编辑</h2>
+    <canvas id="grid" width="16" height="16"></canvas>
+    <div class="palette" id="palette"></div>
+    <div class="tools">
+      <button class="primary" id="btn-png">导出 16×16 PNG</button>
+      <button id="btn-json">复制 JSON</button>
+      <button id="btn-reset">重置为默认图案</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>预览</h2>
+    <div class="previews">
+      <div class="prev-box">
+        <canvas id="prev1" width="16" height="16" style="width:48px;height:48px"></canvas>
+        1× 实际大小
+      </div>
+      <div class="prev-box">
+        <canvas id="prev4" width="16" height="16" style="width:96px;height:96px"></canvas>
+        4× 物品栏
+      </div>
+      <div class="prev-box">
+        <canvas id="tile" width="48" height="48" class="tile" style="width:192px;height:192px"></canvas>
+        3×3 平铺（查接缝）
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>像素数据（游戏侧从这里提取）</h2>
+    <textarea id="json" spellcheck="false"></textarea>
+    <div class="hint">
+      这段 JSON 就是唯一数据源：Python 生成器会把 <code>&lt;script id="tex-data"&gt;</code> 里的内容读出来写成 PNG。
+      手改这里的字符也等价于改图。<br>
+      调色板：<code>.</code> 底 · <code>1</code> 暗纹 · <code>2</code> 边框 · <code>3</code> 外框 · <code>4</code> 环 ·
+      <code>5</code> 环内 · <code>6</code> 烬 · <code>7</code> 铆钉 · <code>8</code> 高光
+    </div>
+  </div>
+</div>
+
+<!-- ===== 唯一数据源：Python 从这两个标记之间取 JSON ===== -->
+<script id="tex-data" type="application/json">
+{
+  "size": 16,
+  "palette": {
+    ".": "#0E0709",
+    "1": "#150C0E",
+    "2": "#2A0D10",
+    "3": "#4A1216",
+    "4": "#7A0F14",
+    "5": "#B3161C",
+    "6": "#FF3B2F",
+    "7": "#5A2027",
+    "8": "#FFD7C9"
+  },
+  "rows": [
+    "3333333333333333",
+    "3722222222222273",
+    "32............23",
+    "32............23",
+    "32.....44.....23",
+    "32...4....4...23",
+    "32....5555....23",
+    "32..4.5865.4..23",
+    "32..4.5665.4..23",
+    "32....5555....23",
+    "32...4....4...23",
+    "32.....44.....23",
+    "32............23",
+    "32.1..........23",
+    "3722222222222273",
+    "3333333333333333"
+  ]
+}
+</script>
+
+<script>
+(function(){
+  const data = JSON.parse(document.getElementById('tex-data').textContent);
+  const PAL = data.palette;
+  const SIZE = data.size;
+  const KEYS = Object.keys(PAL);
+
+  // 工作副本
+  let rows = data.rows.map(r => r.padEnd(SIZE, '.').slice(0, SIZE));
+  let current = '.';
+  let painting = false;
+
+  const grid = document.getElementById('grid');
+  const ctx = grid.getContext('2d');
+  const jsonBox = document.getElementById('json');
+
+  // 调色板
+  const palBox = document.getElementById('palette');
+  KEYS.forEach((k, i) => {
+    const d = document.createElement('div');
+    d.className = 'sw';
+    d.style.background = PAL[k];
+    d.title = k + '  ' + PAL[k];
+    d.setAttribute('aria-pressed', String(k === current));
+    d.addEventListener('click', () => {
+      current = k;
+      [...palBox.children].forEach(c => c.setAttribute('aria-pressed', String(c === d)));
+    });
+    palBox.appendChild(d);
+  });
+
+  function draw(){
+    ctx.clearRect(0,0,SIZE,SIZE);
+    for (let y=0;y<SIZE;y++){
+      for (let x=0;x<SIZE;x++){
+        const ch = rows[y][x];
+        ctx.fillStyle = PAL[ch] || '#000';
+        ctx.fillRect(x,y,1,1);
+      }
+    }
+    // 淡淡的网格线，方便逐格编辑（导出时不含）
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 0.03;
+    for (let i=1;i<SIZE;i++){
+      ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,SIZE); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(SIZE,i); ctx.stroke();
+    }
+    renderPreviews();
+    renderJson();
+  }
+
+  function renderJson(){
+    const dump = { size: SIZE, palette: PAL, rows: rows };
+    jsonBox.value = JSON.stringify(dump, null, 2);
+  }
+
+  function renderPreviews(){
+    ['prev1','prev4'].forEach(id => {
+      const c = document.getElementById(id);
+      const g = c.getContext('2d');
+      g.clearRect(0,0,SIZE,SIZE);
+      for (let y=0;y<SIZE;y++) for (let x=0;x<SIZE;x++){
+        g.fillStyle = PAL[rows[y][x]] || '#000';
+        g.fillRect(x,y,1,1);
+      }
+    });
+    const t = document.getElementById('tile');
+    const tg = t.getContext('2d');
+    tg.clearRect(0,0,48,48);
+    for (let ty=0;ty<3;ty++) for (let tx=0;tx<3;tx++){
+      for (let y=0;y<SIZE;y++) for (let x=0;x<SIZE;x++){
+        tg.fillStyle = PAL[rows[y][x]] || '#000';
+        tg.fillRect(tx*SIZE+x, ty*SIZE+y, 1, 1);
+      }
+    }
+  }
+
+  function paintAt(ev, erase){
+    const r = grid.getBoundingClientRect();
+    const x = Math.floor((ev.clientX - r.left) / r.width  * SIZE);
+    const y = Math.floor((ev.clientY - r.top ) / r.height * SIZE);
+    if (x < 0 || y < 0 || x >= SIZE || y >= SIZE) return;
+    const ch = erase ? '.' : current;
+    if (rows[y][x] === ch) return;
+    rows[y] = rows[y].substring(0,x) + ch + rows[y].substring(x+1);
+    draw();
+  }
+
+  grid.addEventListener('mousedown', e => {
+    e.preventDefault();
+    painting = true;
+    paintAt(e, e.button === 2);
+  });
+  grid.addEventListener('mousemove', e => { if (painting) paintAt(e, e.buttons === 2); });
+  window.addEventListener('mouseup', () => painting = false);
+  grid.addEventListener('contextmenu', e => e.preventDefault());
+
+  // 导出真正的 16×16 PNG
+  document.getElementById('btn-png').addEventListener('click', () => {
+    const out = document.createElement('canvas');
+    out.width = SIZE; out.height = SIZE;
+    const g = out.getContext('2d');
+    for (let y=0;y<SIZE;y++) for (let x=0;x<SIZE;x++){
+      g.fillStyle = PAL[rows[y][x]] || '#000';
+      g.fillRect(x,y,1,1);
+    }
+    const a = document.createElement('a');
+    a.download = 'void_controller.png';
+    a.href = out.toDataURL('image/png');
+    a.click();
+  });
+
+  document.getElementById('btn-json').addEventListener('click', () => {
+    navigator.clipboard && navigator.clipboard.writeText(jsonBox.value);
+    jsonBox.select();
+  });
+
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    rows = data.rows.map(r => r.padEnd(SIZE,'.').slice(0,SIZE));
+    draw();
+  });
+
+  draw();
+})();
+</script>
+</body>
+</html>

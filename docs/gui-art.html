@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>虚空控制器 · 贴图渲染器</title>
+<style>
+  html,body{margin:0;padding:0;background:transparent;overflow:hidden}
+  canvas{display:block;image-rendering:auto}
+</style>
+</head>
+<body>
+<canvas id="art" width="528" height="528"></canvas>
+<script>
+/* ============================================================================
+   虚空控制器贴图渲染器
+   —— 严格按 docs/gui-mockup.html 的 .ctrl / .void-eye / .rows / 光效层实现，
+      但用 Canvas2D 在 3× 超采样下绘制，因此曲线、细线、辉光都是抗锯齿的。
+
+   设计坐标系：176 × 176（对应游戏内 176 GUI 像素）
+   渲染：ctx.scale(3,3) → 528 × 528 像素输出
+   帧参数：?f=0..15（缺省则页面内循环播放，供人眼查看）
+   ============================================================================ */
+const SIZE = 176;
+const SCALE = 3;
+const FRAMES = 24;
+
+const canvas = document.getElementById('art');
+const ctx = canvas.getContext('2d');
+
+// ---- 原型配色
+const C = {
+  core: '#4a0e12', mid: '#25080b', edge: '#120709', deep: '#0b0507',
+  borderOuter: '#000', borderA: '#2a1116', borderB: '#150a0c',
+  headLine: '#43151a',
+  rowTop: '#1b1013', rowBottom: '#120a0c', rowBorder: '#35171c',
+  rowHi: '#2c1418',
+  led: '#3a2a2c',
+  eyeHot: '#ffd7c9', eyeFlame: '#ff5b3d', eyeRed: '#8f1116',
+  eyeDark: '#2a070a', eyeDeep: '#120608', pupil: '#0a0405',
+  glow: '#7a0f14', ember: 'rgba(255,120,90,',
+  iris: 'rgba(255,90,60,',
+  flow: 'rgba(255,150,110,'
+};
+
+const LED_COLORS = ['#c8a24a', '#b3161c', '#44b8c8'];   // 结构 / 任务 / 网络
+
+function hexA(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+/* ---------------------------------------------------------------- 基础层 */
+function drawBase() {
+  // 45° 细纹（对应 .ctrl 的第二层 repeating-linear-gradient）
+  ctx.save();
+  for (let i = -SIZE; i < SIZE * 2; i += 4) {
+    ctx.fillStyle = '#140a0d';
+    ctx.beginPath();
+    ctx.moveTo(i, 0); ctx.lineTo(i + 2, 0); ctx.lineTo(i + 2 - SIZE, SIZE); ctx.lineTo(i - SIZE, SIZE);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+
+  // 径向渐变（对应 radial-gradient(46px 40px at 50% 42%, ...)）
+  const cx = SIZE * 0.5, cy = SIZE * 0.42, rx = 46, ry = 40;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(1, ry / rx);
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+  g.addColorStop(0.00, C.core);
+  g.addColorStop(0.42, C.mid);
+  g.addColorStop(0.70, C.edge);
+  g.addColorStop(1.00, C.deep);
+  ctx.fillStyle = g;
+  ctx.fillRect(-SIZE, -SIZE, SIZE * 2, SIZE * 2);
+  ctx.restore();
+
+  // 暗角 + 内阴影（对应 inset 0 0 18px #000）
+  const v = ctx.createRadialGradient(cx, cy, SIZE * 0.32, cx, cy, SIZE * 0.95);
+  v.addColorStop(0, 'rgba(0,0,0,0)');
+  v.addColorStop(1, 'rgba(0,0,0,0.55)');
+  ctx.fillStyle = v;
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  // 扫描线
+  ctx.fillStyle = 'rgba(255,255,255,0.018)';
+  for (let y = 0; y < SIZE; y += 3) ctx.fillRect(0, y, SIZE, 1);
+}
+
+/* ---------------------------------------------------------------- 边框 */
+function drawBorder(t) {
+  // 外黑边
+  ctx.strokeStyle = C.borderOuter;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, SIZE - 1, SIZE - 1);
+
+  // 2px + 3px 双层描边
+  ctx.strokeStyle = C.borderA;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(1.5, 1.5, SIZE - 3, SIZE - 3);
+
+  ctx.strokeStyle = C.borderB;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(2.5, 2.5, SIZE - 5, SIZE - 5);
+
+  // 边框流光：沿周长跑一段亮光（对应 .ctrl::after 的 conic 遮罩）
+  const inset = 2.5, w = SIZE - 5, h = SIZE - 5;
+  const per = 2 * (w + h);
+  const segs = 360;
+  ctx.save();
+  ctx.lineWidth = 0.64;
+  ctx.lineCap = 'round';
+  for (let i = 0; i < segs; i++) {
+    const p0 = i / segs, p1 = (i + 0.75) / segs;
+    let d = ((p0 - t) % 1 + 1) % 1;
+    if (d > 0.5) d -= 1;
+    const inten = Math.exp(-(d * d) / (2 * 0.055 * 0.055));
+    if (inten < 0.01) continue;
+    const a = Math.min(1, inten * 0.55);
+    const [x0, y0] = perimeterPoint(p0 * per, inset, w, h);
+    const [x1, y1] = perimeterPoint(p1 * per, inset, w, h);
+    ctx.strokeStyle = C.flow + a + ')';
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** 周长参数 → 边框上的坐标（顺时针，从左上角开始）。 */
+function perimeterPoint(s, inset, w, h) {
+  if (s < w) return [inset + s, inset];
+  if (s < w + h) return [inset + w, inset + (s - w)];
+  if (s < 2 * w + h) return [inset + w - (s - w - h), inset + h];
+  return [inset, inset + h - (s - 2 * w - h)];
+}
+
+/* ---------------------------------------------------------------- 斜向扫光 */
+function drawSweep(t) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  const band = 26;
+  const center = -60 + (SIZE + 120) * t;
+  for (let y = 3; y < SIZE - 3; y++) {
+    for (let x = 3; x < SIZE - 3; x++) {
+      const d = Math.abs((x - y * 0.45) - center);
+      if (d >= band) continue;
+      const a = Math.pow(1 - d / band, 2) * 0.10;
+      ctx.fillStyle = `rgba(255,190,160,${a})`;
+      ctx.fillRect(x, y, 1, 1);
+    }
+  }
+  ctx.restore();
+}
+
+/* ---------------------------------------------------------------- header */
+function drawHeader() {
+  ctx.fillStyle = C.headLine;
+  ctx.fillRect(6, 18, SIZE - 12, 1);
+}
+
+/* ---------------------------------------------------------------- 虚空之眼 */
+function drawEye(t) {
+  const cx = SIZE / 2, top = 44, d = 34, r = d / 2;
+  const cy = top + r;
+  const pulse = 0.78 + 0.22 * Math.sin(2 * Math.PI * t);
+
+  // 外发光（box-shadow: 0 0 14px #7a0f14）
+  const glow = ctx.createRadialGradient(cx, cy, r * 0.55, cx, cy, r + 14);
+  glow.addColorStop(0, hexA(C.glow, 0.75 * pulse));
+  glow.addColorStop(1, hexA(C.glow, 0));
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(cx, cy, r + 14, 0, Math.PI * 2); ctx.fill();
+
+  // 虹膜亮弧（对应 ::before 的 conic 遮罩环，半径 = 眼球 + 5）
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(2 * Math.PI * t);
+  ctx.beginPath();
+  ctx.arc(0, 0, r + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI / 2.4);
+  ctx.strokeStyle = C.iris + (0.18 + 0.10 * pulse) + ')';
+  ctx.lineWidth = 1.0;
+  ctx.stroke();
+  ctx.strokeStyle = C.iris + (0.55 + 0.25 * pulse) + ')';
+  ctx.lineWidth = 0.36;
+  ctx.stroke();
+  ctx.restore();
+
+  // 眼球径向渐变
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  g.addColorStop(0.00, C.eyeHot);
+  g.addColorStop(0.09, C.eyeFlame);
+  g.addColorStop(0.21, C.eyeRed);
+  g.addColorStop(0.41, C.eyeDark);
+  g.addColorStop(0.71, C.eyeDeep);
+  g.addColorStop(1.00, '#0a0405');
+  ctx.save();
+  ctx.globalAlpha = 0.9;
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  // 眼球外缘极淡描边（让边缘在缩放后仍然清晰）
+  ctx.strokeStyle = 'rgba(255,90,60,0.16)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(cx, cy, r - 0.5, 0, Math.PI * 2); ctx.stroke();
+
+  // 内阴影
+  const inner = ctx.createRadialGradient(cx, cy, r * 0.72, cx, cy, r);
+  inner.addColorStop(0, 'rgba(0,0,0,0)');
+  inner.addColorStop(1, 'rgba(0,0,0,0.75)');
+  ctx.fillStyle = inner;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+
+  // 竖瞳（3 × 14，圆角 2）
+  ctx.save();
+  ctx.fillStyle = C.pupil;
+  ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 3;
+  roundRect(cx - 1.5, cy - 7, 3, 14, 1.5); ctx.fill();
+  ctx.restore();
+
+  // 高光
+  ctx.fillStyle = `rgba(255,215,201,${0.55 * pulse})`;
+  ctx.fillRect(cx - 1, cy - 5, 1, 1);
+}
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+/* ---------------------------------------------------------------- 三行信息槽 */
+const ROW_H = 14, ROW_GAP = 4, ROW_LED = 4;
+
+function rowRects() {
+  const total = 3 * ROW_H + 2 * ROW_GAP;
+  const top = SIZE - 9 - total;
+  return [0, 1, 2].map(i => ({ x: 8, y: top + i * (ROW_H + ROW_GAP), w: SIZE - 16, h: ROW_H }));
+}
+
+function drawRows(t) {
+  rowRects().forEach((r, i) => {
+    // 底板渐变
+    const g = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
+    g.addColorStop(0, C.rowTop);
+    g.addColorStop(1, C.rowBottom);
+    ctx.fillStyle = g;
+    roundRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1, 2);
+    ctx.fill();
+
+    // 1px 边框 #35171c
+    ctx.strokeStyle = C.rowBorder;
+    ctx.lineWidth = 1;
+    roundRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1, 2);
+    ctx.stroke();
+
+    // 顶部高光
+    ctx.fillStyle = C.rowHi;
+    ctx.fillRect(r.x + 2, r.y + 1, r.w - 4, 1);
+
+    // LED（带辉光，呼吸）
+    const ledPulse = 0.55 + 0.45 * Math.abs(Math.sin(Math.PI * (t + i * 0.17)));
+    const lx = r.x + 5, ly = r.y + r.h / 2;
+    ctx.save();
+    ctx.fillStyle = LED_COLORS[i];
+    ctx.shadowColor = LED_COLORS[i];
+    ctx.shadowBlur = 4 * ledPulse;
+    ctx.beginPath(); ctx.arc(lx + ROW_LED / 2, ly, ROW_LED / 2, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  });
+}
+
+/* ---------------------------------------------------------------- 烬点 */
+const EMBERS = [[26, 120, 0.0], [148, 96, 0.33], [124, 138, 0.66]];
+
+function drawEmbers(t) {
+  EMBERS.forEach(([ex, ey, phase]) => {
+    const cyc = ((t + phase) % 1 + 1) % 1;
+    const y = ey - cyc * 18;
+    const a = Math.max(0, 1 - Math.abs(cyc - 0.5) * 1.6);
+    if (a <= 0) return;
+    const g = ctx.createRadialGradient(ex, y, 0, ex, y, 4);
+    g.addColorStop(0, C.ember + (a * 0.9) + ')');
+    g.addColorStop(1, C.ember + '0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(ex, y, 4, 0, Math.PI * 2); ctx.fill();
+  });
+}
+
+/* ---------------------------------------------------------------- 帧合成 */
+function drawFrame(f) {
+  const t = f / FRAMES;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+  ctx.lineJoin = 'round';
+
+  drawBase();
+  drawSweep(t);
+  drawEmbers(t);
+  drawBorder(t);
+  drawHeader();
+  drawEye(t);
+  drawRows(t);
+}
+
+// ---- 驱动：?f=N 渲染单帧（供无头浏览器截图），否则循环播放
+const params = new URLSearchParams(location.search);
+if (params.has('f')) {
+  drawFrame(parseInt(params.get('f'), 10) || 0);
+  document.title = 'frame-' + params.get('f');
+} else {
+  let f = 0;
+  setInterval(() => { drawFrame(f); f = (f + 1) % FRAMES; }, 170);
+}
+</script>
+</body>
+</html>
